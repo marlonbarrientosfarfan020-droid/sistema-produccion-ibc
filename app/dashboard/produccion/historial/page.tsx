@@ -9,11 +9,13 @@ import {
   Gauge,
   LoaderCircle,
   PackageCheck,
+  Pencil,
   RefreshCcw,
   Search,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type RegistroProduccion = {
   id: string;
@@ -183,6 +185,8 @@ function nombreTipoParada(tipo: string) {
 }
 
 export default function HistorialProduccionPage() {
+  const router = useRouter();
+
   const [registros, setRegistros] = useState<
     RegistroProduccion[]
   >([]);
@@ -633,16 +637,33 @@ export default function HistorialProduccionPage() {
                   </td>
 
                   <td className="px-5 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSeleccionado(registro)
-                      }
-                      className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-100"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Ver detalle
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      {registro.estado === "BORRADOR" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/produccion/editar/${registro.id}`,
+                            )
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 transition hover:bg-amber-100"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Editar
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSeleccionado(registro)
+                        }
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-100"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Ver detalle
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

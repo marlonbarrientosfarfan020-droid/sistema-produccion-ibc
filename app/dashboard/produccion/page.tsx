@@ -13,9 +13,9 @@ import {
   CheckCircle2,
   ClipboardList,
   LoaderCircle,
-  RotateCcw,
   Settings2,
   Save,
+  ShieldCheck,
 } from "lucide-react";
 import ControlProduccionForm, {
   DatosControlProduccion,
@@ -253,6 +253,8 @@ export default function ProduccionPage() {
     useState<DatosControlProceso | null>(null);
 
   const [guardando, setGuardando] = useState(false);
+  const [confirmacionGuardar, setConfirmacionGuardar] =
+    useState("");
   const [mensaje, setMensaje] = useState("");
   const [formulariosKey, setFormulariosKey] = useState(0);
   const [fecha, setFecha] = useState(obtenerFechaActual());
@@ -476,6 +478,7 @@ export default function ProduccionPage() {
   function limpiarResultado() {
     setError("");
     setMensaje("");
+    setConfirmacionGuardar("");
   }
 
   function cambiarPlanta(nuevaPlantaId: string) {
@@ -508,6 +511,16 @@ export default function ProduccionPage() {
   }
 
   async function guardarProduccion() {
+    if (
+      confirmacionGuardar.trim().toUpperCase() !==
+      "GUARDAR"
+    ) {
+      setError(
+        'Para guardar la producción escriba exactamente "GUARDAR".',
+      );
+      return;
+    }
+
     try {
       setGuardando(true);
       setError("");
@@ -661,6 +674,7 @@ export default function ProduccionPage() {
     }
 
     setMensaje(datos.mensaje);
+    setConfirmacionGuardar("");
 
     window.scrollTo({
       top: 0,
@@ -675,30 +689,6 @@ export default function ProduccionPage() {
     } finally {
       setGuardando(false);
     }
-  }
-
-  function limpiarFormulario() {
-    setFecha(obtenerFechaActual());
-    setPlantaId(plantas[0]?.id ?? "");
-    setTurnoId(turnos[0]?.id ?? "");
-    setLineaId("");
-    setMaquinaId("");
-    setOperadorId("");
-    setOrdenProduccion("");
-    setProductoProcesoId(productosProceso[0]?.id ?? "");
-    setProductoTerminadoId("");
-    setMaterialVirgenId(materialesVirgenes[0]?.id ?? "");
-    setMaterialMolidoId("");
-    setColorId("");
-    setColorOtro("");
-    setControlProceso(null);
-    setControlProduccion(null);
-    setError("");
-    setMensaje("");
-    setFormulariosKey((actual) => actual + 1);
-    setControlMolienda(null);
-    setConsumosMateriaPrima([]);
-    setParadasMaquina([]);
   }
 
   if (cargando) {
@@ -1066,6 +1056,7 @@ export default function ProduccionPage() {
           onChange={(datos) => {
             setControlProceso(datos);
             setMensaje("");
+            setConfirmacionGuardar("");
           }}
         />
         <ControlProduccionForm
@@ -1073,6 +1064,7 @@ export default function ProduccionPage() {
           onChange={(datos) => {
             setControlProduccion(datos);
             setMensaje("");
+            setConfirmacionGuardar("");
           }}
         />
         <ControlMoliendaForm
@@ -1080,6 +1072,7 @@ export default function ProduccionPage() {
           onChange={(datos) => {
             setControlMolienda(datos);
             setMensaje("");
+            setConfirmacionGuardar("");
           }}
         />
 
@@ -1091,6 +1084,7 @@ export default function ProduccionPage() {
           onChange={(filas) => {
             setConsumosMateriaPrima(filas);
             setMensaje("");
+            setConfirmacionGuardar("");
           }}
         />
 
@@ -1099,22 +1093,63 @@ export default function ProduccionPage() {
           onChange={(paradas) => {
             setParadasMaquina(paradas);
             setMensaje("");
+            setConfirmacionGuardar("");
           }}
         />
 
-        <div className="sticky bottom-4 z-20 flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={limpiarFormulario}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-slate-300 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
-          >
-            <RotateCcw className="h-5 w-5" />
-            Limpiar
-          </button>
+        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm md:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
 
+              <div>
+                <h3 className="text-lg font-black text-amber-950">
+                  Confirmación obligatoria
+                </h3>
+
+                <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-amber-800">
+                  Revise toda la información. Para evitar un guardado accidental,
+                  escriba exactamente <strong>GUARDAR</strong> antes de registrar
+                  la producción.
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full lg:max-w-md">
+              <label className="text-xs font-black uppercase tracking-wide text-amber-900">
+                Escriba GUARDAR
+              </label>
+
+              <input
+                value={confirmacionGuardar}
+                onChange={(evento) => {
+                  setConfirmacionGuardar(
+                    evento.target.value.toUpperCase(),
+                  );
+                  setError("");
+                }}
+                placeholder="GUARDAR"
+                autoComplete="off"
+                className="mt-2 w-full rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-black uppercase text-slate-950 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+              />
+
+              <p className="mt-2 text-xs font-semibold text-amber-700">
+                El botón se habilitará únicamente cuando la confirmación sea correcta.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="sticky bottom-4 z-20 flex justify-end rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur">
           <button
             type="submit"
-            disabled={guardando}
+            disabled={
+              guardando ||
+              confirmacionGuardar.trim().toUpperCase() !==
+                "GUARDAR"
+            }
             className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-7 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {guardando ? (
@@ -1125,7 +1160,10 @@ export default function ProduccionPage() {
 
             {guardando
               ? "Guardando producción..."
-              : "Guardar producción"}
+              : confirmacionGuardar.trim().toUpperCase() ===
+                  "GUARDAR"
+                ? "Guardar producción"
+                : "Escriba GUARDAR para habilitar"}
           </button>
         </div>
       </form>
