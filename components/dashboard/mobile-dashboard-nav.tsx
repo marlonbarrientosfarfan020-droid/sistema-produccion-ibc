@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 type RolUsuario =
   | "SUPERADMIN"
@@ -287,10 +288,15 @@ export default function MobileDashboardNav() {
   const router = useRouter();
 
   const [abierto, setAbierto] = useState(false);
+  const [montado, setMontado] = useState(false);
   const [usuario, setUsuario] =
     useState<UsuarioSesion | null>(null);
   const [cargando, setCargando] = useState(true);
   const [cerrando, setCerrando] = useState(false);
+
+  useEffect(() => {
+    setMontado(true);
+  }, []);
 
   useEffect(() => {
     async function cargarSesion() {
@@ -378,27 +384,19 @@ export default function MobileDashboardNav() {
     ? `${usuario.nombres.charAt(0)}${usuario.apellidos.charAt(0)}`.toUpperCase()
     : "US";
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setAbierto(true)}
-        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm lg:hidden"
-        aria-label="Abrir menú"
-      >
-        <Menu className="h-6 w-6" />
-      </button>
+  const drawer =
+    montado && abierto
+      ? createPortal(
+          <div className="fixed inset-0 z-[9999] isolate lg:hidden">
 
-      {abierto && (
-        <div className="fixed inset-0 z-[80] lg:hidden">
           <button
             type="button"
             onClick={() => setAbierto(false)}
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            className="fixed inset-0 z-0 bg-slate-950/75 backdrop-blur-sm"
             aria-label="Cerrar menú"
           />
 
-          <aside className="absolute inset-y-0 left-0 flex w-[88%] max-w-sm flex-col border-r border-slate-800 bg-slate-950 text-white shadow-2xl">
+          <aside className="fixed inset-y-0 left-0 z-10 flex h-dvh w-[88%] max-w-sm flex-col overflow-hidden border-r border-slate-800 bg-slate-950 text-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 px-5 py-5">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600">
@@ -426,7 +424,7 @@ export default function MobileDashboardNav() {
               </button>
             </div>
 
-            <div className="flex-1 space-y-7 overflow-y-auto px-4 py-5">
+            <div className="min-h-0 flex-1 space-y-7 overflow-y-auto overscroll-contain bg-slate-950 px-4 py-5">
               {cargando ? (
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
                   <LoaderCircle className="h-5 w-5 animate-spin text-blue-400" />
@@ -458,7 +456,7 @@ export default function MobileDashboardNav() {
               )}
             </div>
 
-            <div className="border-t border-slate-800 p-4">
+            <div className="shrink-0 border-t border-slate-800 bg-slate-950 p-4">
               <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
                 {usuario ? (
                   <>
@@ -515,8 +513,23 @@ export default function MobileDashboardNav() {
               </div>
             </div>
           </aside>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm lg:hidden"
+        aria-label="Abrir menú"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+
+      {drawer}
     </>
   );
 }
