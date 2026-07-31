@@ -1,0 +1,631 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =========================================================
+// ENUMS DE SEGURIDAD Y CONFIGURACIÓN
+// =========================================================
+
+enum RolUsuario {
+  SUPERADMIN
+  ADMINISTRADOR
+  JEFE_PLANTA
+  SUPERVISOR
+  OPERADOR
+  ALMACEN
+  CALIDAD
+  MANTENIMIENTO
+  CONSULTA
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  INACTIVO
+  BLOQUEADO
+}
+
+enum EstadoMaquina {
+  OPERATIVA
+  DETENIDA
+  MANTENIMIENTO
+  FUERA_DE_SERVICIO
+}
+
+enum TipoLinea {
+  SOPLADO
+  INYECCION
+  ENSAMBLAJE
+  MOLIENDA
+  OTRO
+}
+
+enum TipoProducto {
+  PRODUCTO_PROCESO
+  PRODUCTO_TERMINADO
+  MATERIA_PRIMA
+  MATERIAL_EMBALAJE
+}
+
+enum TipoMateriaPrima {
+  VIRGEN
+  MOLIDO
+  OTRO
+}
+
+enum EstadoRegistroProduccion {
+  BORRADOR
+  FINALIZADO
+  ANULADO
+}
+
+enum TipoParadaMaquina {
+  MECANICA
+  ELECTRICA
+  CALIDAD
+  FALTA_MATERIAL
+  CAMBIO_MOLDE
+  AJUSTE_PROCESO
+  OTRA
+}
+
+// =========================================================
+// EMPRESA
+// =========================================================
+
+model Empresa {
+  id              String   @id @default(cuid())
+  razonSocial     String
+  nombreComercial String
+  ruc             String?  @unique
+  direccion       String?
+  telefono        String?
+  correo          String?
+  logoUrl         String?
+  activo          Boolean  @default(true)
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+
+  usuarios            Usuario[]
+  plantas             Planta[]
+  turnos              Turno[]
+  lineas              LineaProduccion[]
+  maquinas            Maquina[]
+  unidadesMedida      UnidadMedida[]
+  productos           Producto[]
+  operadores          Operador[]
+  coloresProduccion   ColorProduccion[]
+  registrosProduccion RegistroProduccion[]
+
+  @@index([nombreComercial])
+  @@index([activo])
+}
+
+// =========================================================
+// PLANTAS
+// =========================================================
+
+model Planta {
+  id            String   @id @default(cuid())
+  empresaId     String
+  codigo        String
+  nombre        String
+  direccion     String?
+  descripcion   String?
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa             Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuarios            Usuario[]
+  lineas              LineaProduccion[]
+  maquinas            Maquina[]
+  registrosProduccion RegistroProduccion[]
+
+  @@unique([empresaId, codigo])
+  @@index([empresaId])
+  @@index([nombre])
+  @@index([activo])
+}
+
+// =========================================================
+// USUARIOS
+// =========================================================
+
+model Usuario {
+  id              String        @id @default(cuid())
+  empresaId       String
+  plantaId        String?
+  nombres         String
+  apellidos       String
+  numeroDocumento String?
+  correo          String
+  passwordHash    String
+  rol             RolUsuario    @default(OPERADOR)
+  estado          EstadoUsuario @default(ACTIVO)
+  ultimoAccesoEn  DateTime?
+  creadoEn        DateTime      @default(now())
+  actualizadoEn   DateTime      @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  planta  Planta? @relation(fields: [plantaId], references: [id], onDelete: SetNull)
+
+  @@unique([empresaId, correo])
+  @@index([empresaId])
+  @@index([plantaId])
+  @@index([rol])
+  @@index([estado])
+}
+
+// =========================================================
+// TURNOS
+// =========================================================
+
+model Turno {
+  id                   String   @id @default(cuid())
+  empresaId            String
+  codigo               String
+  nombre               String
+  horaInicio           String
+  horaSalida           String
+  cruzaMedianoche      Boolean  @default(false)
+  color                String?  @default("#2563EB")
+  orden                Int      @default(1)
+  toleranciaIngresoMin Int      @default(0)
+  toleranciaSalidaMin  Int      @default(0)
+  seleccionAutomatica  Boolean  @default(true)
+  descripcion          String?
+  activo               Boolean  @default(true)
+  creadoEn             DateTime @default(now())
+  actualizadoEn        DateTime @updatedAt
+
+  empresa             Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  registrosProduccion RegistroProduccion[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
+  @@index([activo])
+  @@index([orden])
+}
+
+// =========================================================
+// LÍNEAS DE PRODUCCIÓN
+// =========================================================
+
+model LineaProduccion {
+  id            String    @id @default(cuid())
+  empresaId     String
+  plantaId      String
+  codigo        String
+  nombre        String
+  tipo          TipoLinea
+  descripcion   String?
+  activo        Boolean   @default(true)
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  empresa             Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  planta              Planta               @relation(fields: [plantaId], references: [id], onDelete: Cascade)
+  maquinas            Maquina[]
+  registrosProduccion RegistroProduccion[]
+
+  @@unique([empresaId, codigo])
+  @@index([empresaId])
+  @@index([plantaId])
+  @@index([tipo])
+  @@index([activo])
+}
+
+// =========================================================
+// MÁQUINAS
+// =========================================================
+
+model Maquina {
+  id                String        @id @default(cuid())
+  empresaId         String
+  plantaId          String
+  lineaProduccionId String?
+  codigo            String
+  nombre            String
+  descripcion       String?
+  marca             String?
+  modelo            String?
+  numeroSerie       String?
+  anioFabricacion   Int?
+  capacidadNominal  Decimal?      @db.Decimal(12, 3)
+  unidadCapacidad   String?
+  estado            EstadoMaquina @default(OPERATIVA)
+  fechaInstalacion  DateTime?
+  ultimaRevisionEn  DateTime?
+  proximaRevisionEn DateTime?
+  observaciones     String?
+  activo            Boolean       @default(true)
+  creadoEn          DateTime      @default(now())
+  actualizadoEn     DateTime      @updatedAt
+
+  empresa             Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  planta              Planta               @relation(fields: [plantaId], references: [id], onDelete: Cascade)
+  lineaProduccion     LineaProduccion?     @relation(fields: [lineaProduccionId], references: [id], onDelete: SetNull)
+  registrosProduccion RegistroProduccion[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, numeroSerie])
+  @@index([empresaId])
+  @@index([plantaId])
+  @@index([lineaProduccionId])
+  @@index([estado])
+  @@index([activo])
+}
+
+// =========================================================
+// UNIDADES DE MEDIDA
+// =========================================================
+
+model UnidadMedida {
+  id             String   @id @default(cuid())
+  empresaId      String
+  codigo         String
+  nombre         String
+  simbolo        String
+  permiteDecimal Boolean  @default(true)
+  descripcion    String?
+  activo         Boolean  @default(true)
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+
+  empresa   Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  productos Producto[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
+  @@index([activo])
+}
+
+// =========================================================
+// PRODUCTOS, MATERIAS PRIMAS Y EMBALAJES
+// =========================================================
+
+model Producto {
+  id               String            @id @default(cuid())
+  empresaId        String
+  unidadMedidaId   String?
+  codigo           String
+  codigoSap        String?
+  nombre           String
+  descripcion      String?
+  tipo             TipoProducto
+  tipoMateriaPrima TipoMateriaPrima?
+  familia          String?
+  marca            String?
+  pesoUnitario     Decimal?          @db.Decimal(12, 3)
+  capacidad        Decimal?          @db.Decimal(12, 3)
+  unidadCapacidad  String?
+  stockInicial     Decimal           @default(0) @db.Decimal(14, 3)
+  stockActual      Decimal           @default(0) @db.Decimal(14, 3)
+  stockMinimo      Decimal           @default(0) @db.Decimal(14, 3)
+  controlaStock    Boolean           @default(true)
+  permiteDecimal   Boolean           @default(true)
+  activo           Boolean           @default(true)
+  observaciones    String?
+  creadoEn         DateTime          @default(now())
+  actualizadoEn    DateTime          @updatedAt
+
+  empresa      Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  unidadMedida UnidadMedida? @relation(fields: [unidadMedidaId], references: [id], onDelete: SetNull)
+
+  registrosComoProceso        RegistroProduccion[]  @relation("ProductoProceso")
+  registrosComoTerminado      RegistroProduccion[]  @relation("ProductoTerminado")
+  registrosComoMaterialVirgen RegistroProduccion[]  @relation("MaterialVirgen")
+  registrosComoMaterialMolido RegistroProduccion[]  @relation("MaterialMolido")
+  consumosMateriaPrima        ConsumoMateriaPrima[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, codigoSap])
+  @@index([empresaId])
+  @@index([unidadMedidaId])
+  @@index([tipo])
+  @@index([tipoMateriaPrima])
+  @@index([familia])
+  @@index([activo])
+}
+
+// =========================================================
+// OPERADORES DE PRODUCCIÓN
+// =========================================================
+
+model Operador {
+  id            String   @id @default(cuid())
+  empresaId     String
+  codigo        String
+  nombre        String
+  descripcion   String?
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa             Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  registrosProduccion RegistroProduccion[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
+  @@index([activo])
+}
+
+// =========================================================
+// COLORES DE PRODUCCIÓN
+// =========================================================
+
+model ColorProduccion {
+  id            String   @id @default(cuid())
+  empresaId     String
+  codigo        String
+  nombre        String
+  codigoHex     String?
+  permiteOtro   Boolean  @default(false)
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa             Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  registrosProduccion RegistroProduccion[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
+  @@index([activo])
+}
+
+// =========================================================
+// REGISTRO GENERAL DE PRODUCCIÓN
+// =========================================================
+
+model RegistroProduccion {
+  id                  String  @id @default(cuid())
+  empresaId           String
+  plantaId            String
+  turnoId             String
+  lineaProduccionId   String
+  maquinaId           String
+  operadorId          String
+  productoProcesoId   String
+  productoTerminadoId String
+  materialVirgenId    String?
+  materialMolidoId    String?
+  colorProduccionId   String?
+
+  fechaProduccion DateTime @db.Date
+  semana          Int
+  mes             Int
+  anio            Int
+
+  lote            String
+  ordenProduccion String
+
+  colorOtro     String?
+  observaciones String?
+
+  estado EstadoRegistroProduccion @default(BORRADOR)
+
+  esSimulacion     Boolean   @default(false)
+  archivoImportado String?
+  importadoEn      DateTime?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa              Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  planta               Planta                @relation(fields: [plantaId], references: [id], onDelete: Restrict)
+  turno                Turno                 @relation(fields: [turnoId], references: [id], onDelete: Restrict)
+  lineaProduccion      LineaProduccion       @relation(fields: [lineaProduccionId], references: [id], onDelete: Restrict)
+  maquina              Maquina               @relation(fields: [maquinaId], references: [id], onDelete: Restrict)
+  operador             Operador              @relation(fields: [operadorId], references: [id], onDelete: Restrict)
+  productoProceso      Producto              @relation("ProductoProceso", fields: [productoProcesoId], references: [id], onDelete: Restrict)
+  productoTerminado    Producto              @relation("ProductoTerminado", fields: [productoTerminadoId], references: [id], onDelete: Restrict)
+  materialVirgen       Producto?             @relation("MaterialVirgen", fields: [materialVirgenId], references: [id], onDelete: SetNull)
+  materialMolido       Producto?             @relation("MaterialMolido", fields: [materialMolidoId], references: [id], onDelete: SetNull)
+  colorProduccion      ColorProduccion?      @relation(fields: [colorProduccionId], references: [id], onDelete: SetNull)
+  controlProceso       ControlProceso?
+  controlProduccion    ControlProduccion?
+  controlMolienda      ControlMolienda?
+  consumosMateriaPrima ConsumoMateriaPrima[]
+  paradasMaquina       ParadaMaquina[]
+
+  @@index([empresaId])
+  @@index([plantaId])
+  @@index([turnoId])
+  @@index([lineaProduccionId])
+  @@index([maquinaId])
+  @@index([operadorId])
+  @@index([productoProcesoId])
+  @@index([productoTerminadoId])
+  @@index([materialVirgenId])
+  @@index([materialMolidoId])
+  @@index([colorProduccionId])
+  @@index([fechaProduccion])
+  @@index([semana])
+  @@index([mes])
+  @@index([anio])
+  @@index([lote])
+  @@index([ordenProduccion])
+  @@index([estado])
+  @@index([esSimulacion])
+}
+
+// =========================================================
+// CONTROL DEL PROCESO DE EXTRUSIÓN POR SOPLADO
+// =========================================================
+
+model ControlProceso {
+  id                   String @id @default(cuid())
+  registroProduccionId String @unique
+
+  // Extrusora A: cinco zonas de temperatura
+  extrusoraAZona1 Decimal? @db.Decimal(8, 2)
+  extrusoraAZona2 Decimal? @db.Decimal(8, 2)
+  extrusoraAZona3 Decimal? @db.Decimal(8, 2)
+  extrusoraAZona4 Decimal? @db.Decimal(8, 2)
+  extrusoraAZona5 Decimal? @db.Decimal(8, 2)
+
+  // Extrusora B: cinco zonas de temperatura
+  extrusoraBZona1 Decimal? @db.Decimal(8, 2)
+  extrusoraBZona2 Decimal? @db.Decimal(8, 2)
+  extrusoraBZona3 Decimal? @db.Decimal(8, 2)
+  extrusoraBZona4 Decimal? @db.Decimal(8, 2)
+  extrusoraBZona5 Decimal? @db.Decimal(8, 2)
+
+  // Acumulador: seis zonas de temperatura
+  acumuladorZona1 Decimal? @db.Decimal(8, 2)
+  acumuladorZona2 Decimal? @db.Decimal(8, 2)
+  acumuladorZona3 Decimal? @db.Decimal(8, 2)
+  acumuladorZona4 Decimal? @db.Decimal(8, 2)
+  acumuladorZona5 Decimal? @db.Decimal(8, 2)
+  acumuladorZona6 Decimal? @db.Decimal(8, 2)
+
+  // Presiones de aire
+  presionAirePrincipal Decimal? @db.Decimal(10, 3)
+  presionSoplo         Decimal? @db.Decimal(10, 3)
+  presionPresoplo      Decimal? @db.Decimal(10, 3)
+
+  // Temperaturas auxiliares
+  temperaturaAgua    Decimal? @db.Decimal(8, 2)
+  temperaturaChiller Decimal? @db.Decimal(8, 2)
+  temperaturaMolde   Decimal? @db.Decimal(8, 2)
+
+  // Parámetros hidráulicos y mecánicos
+  presionHidraulica   Decimal? @db.Decimal(10, 3)
+  velocidadTornilloA  Decimal? @db.Decimal(10, 3)
+  velocidadTornilloB  Decimal? @db.Decimal(10, 3)
+  espesorParison      Decimal? @db.Decimal(10, 3)
+  pesoEnvase          Decimal? @db.Decimal(12, 3)
+  tiempoCicloSegundos Decimal? @db.Decimal(10, 3)
+
+  observaciones String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  registroProduccion RegistroProduccion @relation(fields: [registroProduccionId], references: [id], onDelete: Cascade)
+
+  @@index([registroProduccionId])
+}
+
+// =========================================================
+// CONTROL DE PRODUCCIÓN
+// =========================================================
+
+model ControlProduccion {
+  id                   String @id @default(cuid())
+  registroProduccionId String @unique
+
+  programado Int @default(0)
+  producido  Int @default(0)
+  buenos     Int @default(0)
+  rechazados Int @default(0)
+
+  horasProduccion   Decimal? @db.Decimal(10, 3)
+  produccionPorHora Decimal? @db.Decimal(12, 3)
+
+  eficiencia           Decimal? @db.Decimal(7, 3)
+  porcentajeRechazo    Decimal? @db.Decimal(7, 3)
+  cumplimientoPrograma Decimal? @db.Decimal(7, 3)
+
+  observaciones String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  registroProduccion RegistroProduccion @relation(fields: [registroProduccionId], references: [id], onDelete: Cascade)
+
+  @@index([registroProduccionId])
+  @@index([programado])
+  @@index([producido])
+  @@index([buenos])
+}
+
+// =========================================================
+// CONTROL DE MOLIENDA
+// =========================================================
+
+model ControlMolienda {
+  id                   String @id @default(cuid())
+  registroProduccionId String @unique
+
+  pesoRecuperable   Decimal @default(0) @db.Decimal(14, 3)
+  pesoNoRecuperable Decimal @default(0) @db.Decimal(14, 3)
+  pesoBarrido       Decimal @default(0) @db.Decimal(14, 3)
+  pesoTotal         Decimal @default(0) @db.Decimal(14, 3)
+
+  observaciones String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  registroProduccion RegistroProduccion @relation(fields: [registroProduccionId], references: [id], onDelete: Cascade)
+
+  @@index([registroProduccionId])
+}
+
+// =========================================================
+// CONSUMO DE MATERIA PRIMA
+// =========================================================
+
+model ConsumoMateriaPrima {
+  id                   String @id @default(cuid())
+  registroProduccionId String
+  productoId           String
+
+  cantidadInicial   Decimal @default(0) @db.Decimal(14, 3)
+  cantidadConsumida Decimal @default(0) @db.Decimal(14, 3)
+  cantidadFinal     Decimal @default(0) @db.Decimal(14, 3)
+
+  consumoEstandarEnvase Decimal? @db.Decimal(12, 4)
+  consumoRealEnvase     Decimal? @db.Decimal(12, 4)
+  diferenciaConsumo     Decimal? @db.Decimal(12, 4)
+  rendimiento           Decimal? @db.Decimal(7, 3)
+
+  observaciones String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  registroProduccion RegistroProduccion @relation(fields: [registroProduccionId], references: [id], onDelete: Cascade)
+  producto           Producto           @relation(fields: [productoId], references: [id], onDelete: Restrict)
+
+  @@unique([registroProduccionId, productoId])
+  @@index([registroProduccionId])
+  @@index([productoId])
+}
+
+// =========================================================
+// PARADAS DE MÁQUINA
+// =========================================================
+
+model ParadaMaquina {
+  id                   String @id @default(cuid())
+  registroProduccionId String
+
+  horaInicio String
+  horaFin    String
+  minutos    Int
+
+  tipo   TipoParadaMaquina
+  motivo String
+
+  observaciones String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  registroProduccion RegistroProduccion @relation(fields: [registroProduccionId], references: [id], onDelete: Cascade)
+
+  @@index([registroProduccionId])
+  @@index([tipo])
+  @@index([minutos])
+}

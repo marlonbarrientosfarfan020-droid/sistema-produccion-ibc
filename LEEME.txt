@@ -1,0 +1,24 @@
+MODULOS PRODUCTOS TERMINADOS + REPORTES
+
+Copiar exactamente:
+
+app/api/productos/route.ts
+app/api/productos/[id]/route.ts
+app/dashboard/productos/page.tsx
+app/dashboard/reportes/page.tsx
+
+No se requiere modificar prisma/schema.prisma.
+El modelo Producto ya contiene todos los campos necesarios.
+
+Después ejecutar:
+rmdir /s /q .next
+npm run build
+npm run dev
+
+Rutas:
+http://localhost:3000/dashboard/productos
+http://localhost:3000/dashboard/reportes
+
+Las exportaciones usan rutas ya existentes:
+- /api/produccion/exportar
+- /api/produccion/exportar-pdf
